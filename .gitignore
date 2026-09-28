@@ -1,0 +1,17 @@
+node_modules/
+*node_modules*/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage/
+.turbo/
+.cache/
+.vite/
+*.tmp
+edge_profile/
+*edge_profile*
+temp_*.html

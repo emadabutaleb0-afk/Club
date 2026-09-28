@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ─────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  memberships   ClubMembership[]
+  bookings      Booking[]
+  payments      Payment[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Clubs ────────────────────────────────────────────
+
+model Club {
+  id                       String   @id @default(uuid())
+  name                     String
+  slug                     String   @unique
+  logo                     String?
+  description              String?
+  address                  String?
+  phone                    String?
+  email                    String?
+  website                  String?
+  stripeAccountId          String?
+  stripeOnboardingComplete Boolean  @default(false)
+  timezone                 String   @default("UTC")
+  currency                 String   @default("USD")
+  bookingLeadTimeMins      Int      @default(60)
+  cancellationPolicyHours  Int      @default(24)
+  allowWaitlists           Boolean  @default(true)
+  maxBookingsPerMember     Int      @default(5)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  memberships    ClubMembership[]
+  facilities     Facility[]
+  membershipPlans MembershipPlan[]
+  payments       Payment[]
+  invoices       Invoice[]
+  announcements  Announcement[]
+  auditLogs      AuditLog[]
+
+  @@map("clubs")
+}
+
+// ─── Club Membership (join table) ─────────────────────
+
+model ClubMembership {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clubId           String
+  club             Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  role             String           @default("member") // member, coach, reception, finance, admin, super_admin
+  status           String           @default("pending") // active, expired, suspended, pending, cancelled
+  membershipNumber String
+  joinedAt         DateTime         @default(now())
+  expiresAt        DateTime?
+
+  // Profile fields
+  dateOfBirth      String?
+  gender           String?
+  address          String?
+  city             String?
+  state            String?
+  postalCode       String?
+  country          String?
+  medicalNotes     String?
+  allergies        String?
+  bloodType        String?
+  emergencyContacts Json?           @default("[]")
+  waiverSigned     Boolean          @default(false)
+  waiverSignedAt   DateTime?
+
+  subscriptions    Subscription[]
+
+  @@unique([userId, clubId])
+  @@index([clubId])
+  @@index([status])
+  @@map("club_memberships")
+}
+
+// ─── Membership Plans ─────────────────────────────────
+
+model MembershipPlan {
+  id            String   @id @default(uuid())
+  clubId        String
+  club          Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  type          String   // annual, monthly, quarterly, swimming, courts, custom
+  price         Float
+  currency      String   @default("USD")
+  interval      String   // month, quarter, year, one_time
+  intervalCount Int      @default(1)
+  features      Json     @default("[]")
+  isActive      Boolean  @default(true)
+  stripePriceId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@index([clubId])
+  @@map("membership_plans")
+}
+
+// ─── Subscriptions ────────────────────────────────────
+
+model Subscription {
+  id                   String   @id @default(uuid())
+  membershipId         String
+  membership           ClubMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  planId               String
+  plan                 MembershipPlan @relation(fields: [planId], references: [id])
+  status               String   @default("incomplete") // active, past_due, cancelled, trialing, incomplete
+  stripeSubscriptionId String?  @unique
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([membershipId])
+  @@map("subscriptions")
+}
+
+// ─── Payments ─────────────────────────────────────────
+
+model Payment {
+  id                    String   @id @default(uuid())
+  clubId                String
+  club                  Club     @relation(fields: [clubId], references: [id])
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+  amount                Float
+  platformFee           Float    @default(0)
+  netAmount             Float
+  currency              String   @default("USD")
+  status                String   @default("pending") // succeeded, pending, failed, refunded, partially_refunded
+  type                  String   // subscription, one_time, booking, event, refund
+  description           String
+  stripePaymentIntentId String?  @unique
+  invoiceId             String?
+  refundedAt            DateTime?
+  createdAt             DateTime @default(now())
+
+  @@index([clubId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// ─── Invoices ─────────────────────────────────────────
+
+model Invoice {
+  id            String   @id @default(uuid())
+  clubId        String
+  club          Club     @relation(fields: [clubId], references: [id])
+  userId        String
+  invoiceNumber String   @unique
+  amount        Float
+  platformFee   Float    @default(0)
+  status        String   @default("draft") // draft, sent, paid, overdue, cancelled
+  dueDate       DateTime
+  paidAt        DateTime?
+  pdfUrl        String?
+  lineItems     Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([clubId])
+  @@map("invoices")
+}
+
+// ─── Facilities ───────────────────────────────────────
+
+model Facility {
+  id          String   @id @default(uuid())
+  clubId      String
+  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name        String
+  type        String   // court, lane, room, field, pool, gym, studio, other
+  description String?
+  capacity    Int      @default(1)
+  amenities   Json     @default("[]")
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  slots    FacilitySlot[]
+  bookings Booking[]
+
+  @@index([clubId])
+  @@map("facilities")
+}
+
+model FacilitySlot {
+  id          String   @id @default(uuid())
+  facilityId  String
+  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int      // 0=Sunday, 6=Saturday
+  startTime   String   // HH:mm
+  endTime     String   // HH:mm
+  isBlocked   Boolean  @default(false)
+  blockReason String?
+  maxBookings Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  @@index([facilityId])
+  @@map("facility_slots")
+}
+
+// ─── Bookings ─────────────────────────────────────────
+
+model Booking {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  facilityId       String
+  facility         Facility @relation(fields: [facilityId], references: [id])
+  date             DateTime @db.Date
+  startTime        String   // HH:mm
+  endTime          String   // HH:mm
+  status           String   @default("confirmed") // confirmed, waitlisted, cancelled, completed, no_show
+  waitlistPosition Int?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([facilityId, date])
+  @@index([userId])
+  @@map("bookings")
+}
+
+// ─── Notifications ────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // booking_reminder, payment_success, announcement, waitlist_promoted
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Announcements ────────────────────────────────────
+
+model Announcement {
+  id        String   @id @default(uuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  imageUrl  String?
+  isPinned  Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clubId])
+  @@map("announcements")
+}
+
+// ─── Audit Log ────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id])
+  userId    String?
+  action    String   // member.created, payment.received, booking.cancelled, etc.
+  entity    String   // User, Payment, Booking, etc.
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([clubId, createdAt])
+  @@map("audit_logs")
+}

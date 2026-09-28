@@ -1,0 +1,21 @@
+{
+    "name": "clubhub",
+    "private": true,
+    "workspaces": [
+        "shared",
+        "backend",
+        "web"
+    ],
+    "scripts": {
+        "dev:backend": "npm run dev --workspace=backend",
+        "dev:web": "npm run dev --workspace=web",
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+        "build": "npm run build --workspace=shared && npm run build --workspace=backend && npm run build --workspace=web",
+        "lint": "npm run lint --workspaces --if-present",
+        "test": "npm run test --workspaces --if-present"
+    },
+    "devDependencies": {
+        "concurrently": "^9.1.0",
+        "typescript": "^5.7.3"
+    }
+}

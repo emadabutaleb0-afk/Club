@@ -285,17 +285,17 @@ export default function LandingPage() {
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     />
                                     <span style={{ position: 'absolute', top: 10, right: 10, background: '#2563eb', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '6px' }}>
-                                        {sport.tagAr}
+                                        {sport.category}
                                     </span>
                                 </div>
                                 <div style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                         <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{sport.titleAr}</h3>
-                                        <span style={{ color: '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>{sport.priceMonthlyAr}</span>
+                                        <span style={{ color: '#10b981', fontWeight: 800, fontSize: '0.9rem' }}>{sport.feeMonthlyEgp} ج.م/شهر</span>
                                     </div>
                                     <p style={{ fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#64748b', marginBottom: 10, lineHeight: 1.5 }}>{sport.descAr}</p>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: isDark ? '#cbd5e1' : '#475569', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
-                                        <span>👥 {sport.ageGroupAr}</span>
+                                        <span>👥 {sport.agesAr}</span>
                                         <span style={{ color: '#3b82f6', fontWeight: 700 }}>سجل في الأكاديمية ⚡</span>
                                     </div>
                                 </div>
@@ -389,8 +389,8 @@ export default function LandingPage() {
                         </span>
                         <span style={{ lineHeight: 1.4, fontSize: '0.82rem' }}>
                             {language === 'ar'
-                                ? '🏛️ وزير الشباب والرياضة (جوهر نبيل) يتفقد مجمع حمام السباحة والجيم والمبنى الإداري بالتجمع الأول ويوجه برفع كفاءة المنشآت (٢٥ سبتمبر ٢٠٢٦)'
-                                : '🏛️ Minister Gohar Nabil conducts surprise inspection of First Settlement Youth Center, pool & gym facilities (25 Sep 2026)'}
+                                ? '🏆 إنجاز تاريخي: تتويج فريق التجمع الأول بطلاً لدوري قطاعات الجمهورية لكرة القدم (مواليد 2009) ومتابعة تنفيذ توجيهات الوزير لتطوير المنشآت (١٤ فداناً)'
+                                : '🏆 Historic Achievement: First Settlement Team Crowned Champions of Republic Sectors League (2009) & Facilities Modernization'}
                         </span>
                     </div>
 
